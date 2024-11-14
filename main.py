@@ -1,23 +1,29 @@
+import sqlite3
 from sentence_transformers import SentenceTransformer
-import numpy as np
+import assets
 
-# Load pre-trained model
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Texts to compare
-text1 = "A sunny beach with clear skies and soft sand."
-text2 = "A beach with clear weather, bright sunshine, and sandy shore"
+# ---------------send to db
 
-# Get embeddings
-embedding1 = model.encode(text1)
-embedding2 = model.encode(text2)
+conn = sqlite3.connect("image_descriptions.db")
+cursor = conn.cursor()
 
-# Cosine Similarity
-def cosine_similarity(embedding1, embedding2):
-    dot_product = np.dot(embedding1, embedding2)
-    norm1 = np.linalg.norm(embedding1)
-    norm2 = np.linalg.norm(embedding2)
-    return dot_product / (norm1 * norm2)
+user_input = input(f"Input your query: ")
+user_input = model.encode(user_input) 
 
-similarity = cosine_similarity(embedding1, embedding2)
-print(f'Cosine Similarity: {similarity}')
+
+cursor.execute("SELECT *  FROM descriptions")
+rows = cursor.fetchall()
+
+sample_dict = {}
+
+for row in rows:
+    sample_dict[row[1]] = model.encode(row[2])
+
+for img_url in sample_dict.keys():
+    similarity = assets.cosine_similarity(user_input, sample_dict[img_url])
+    if similarity > 0.5:
+        print(f"Image url: {img_url}")
+
+conn.close()
